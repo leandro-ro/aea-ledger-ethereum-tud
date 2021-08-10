@@ -360,6 +360,61 @@ class EthereumCrypto(Crypto[Account]):
             raise
         return private_key.hex()[2:]
 
+    # TODO: implement (&work on solution if key already generated)
+    def generate_master_key(self, override=False) -> bool:
+        """
+        generate a master secret key MSK and a master public key MPK (for later key derivation)
+        and an initial state, store the MSK the cold wallet directory and the MPK in the hot wallet directory.
+        (If a master key pair is already generated, and override is false, an exception is thrown)
+
+        :param override: if an already existing key pair should be replaced or not
+        :return: If the generation was successful
+        """
+        pass
+
+    # TODO: implement
+    def does_master_key_pair_exist(self) -> bool:
+        """
+        Checks if a master key pair already generated
+
+        :return: If the generation was successful
+        """
+        pass
+
+    # TODO: implement
+    def public_key_from_id(self, id) -> str:
+        """
+        Return/derive a private key.
+        If the ID is already existing in state, return the key from keystore
+        If the ID is new, derive a new key
+
+        :param id: the id of the derived public key
+        :return: a public key string
+        """
+        pass
+
+    # TODO: implement
+    def private_key_from_id(self, id) -> str:
+        """
+        Return/derive a public key.
+        If the ID is already existing in state, return the key from keystore
+        If the ID is new, derive a new key
+
+        :param id: the id of the derived public key
+        :return: a private key string
+        """
+        pass
+
+    # TODO: implement
+    def sign_transaction_with_session_key(self, transaction: JSONLike, id) -> JSONLike:
+        """
+        Sign a transaction in bytes string form by using a earlier generated session key
+
+        :param transaction: the transaction to be signed
+        :param id: the id of the derived private key
+        :return: signed transaction
+        """
+
 
 class EthereumHelper(Helper):
     """Helper class usable as Mixin for EthereumApi or as standalone class."""
