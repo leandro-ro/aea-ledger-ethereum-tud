@@ -24,23 +24,24 @@ from setuptools import find_packages, setup
 
 
 setup(
-    name="aea-ledger-ethereum",
+    name="aea-ledger-ethereum-tud",
     version="1.0.0",
-    author="Fetch.AI Limited",
+    author="Fetch.AI Limited / Leandro Rometsch (Wallet Code)",
     license="Apache-2.0",
-    description="Python package wrapping the public and private key cryptography and ledger api of Ethereum.",
+    description="Python package wrapping the public and private key cryptography and ledger api of Ethereum. Added a "
+                "custom Ethereum Hot/Cold Wallet",
     packages=find_packages(include=["aea_ledger_ethereum*"]),
     install_requires=[
         "aea>=1.0.0, <2.0.0",
         "web3==5.12.0",
         "ipfshttpclient==0.6.1",
         "eth-account==0.5.2",
+        "eth-utils==1.10.0",
+        "jpype1==1.3.0",
     ],
     tests_require=["pytest"],
     entry_points={
-        "aea.cryptos": ["ethereum = aea_ledger_ethereum:EthereumCrypto"],
-        "aea.ledger_apis": ["ethereum = aea_ledger_ethereum:EthereumApi"],
-        "aea.faucet_apis": ["ethereum = aea_ledger_ethereum:EthereumFaucetApi"],
+        "aea.cryptos": ["ethereum_tud = aea_ledger_ethereum_tud:EthereumCrypto"],
     },
     classifiers=[
         "Environment :: Console",
