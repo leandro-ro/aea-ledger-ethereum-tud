@@ -21,6 +21,7 @@ import json
 import logging
 import threading
 import time
+import tudwallet.wallet as tud
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
@@ -47,7 +48,6 @@ from aea.helpers import http_requests as requests
 from aea.helpers.base import try_decorator
 from aea.helpers.io import open_file
 
-
 _default_logger = logging.getLogger(__name__)
 
 _ETHEREUM = "ethereum"
@@ -61,7 +61,7 @@ _BYTECODE = "bytecode"
 
 
 def get_gas_price_strategy(
-    gas_price_strategy: Optional[str] = None, api_key: Optional[str] = None
+        gas_price_strategy: Optional[str] = None, api_key: Optional[str] = None
 ) -> Callable[[Web3, TxParams], Wei]:
     """Get the gas price strategy."""
     supported_gas_price_modes = ["safeLow", "average", "fast", "fastest"]
@@ -84,7 +84,7 @@ def get_gas_price_strategy(
         return rpc_gas_price_strategy
 
     def gas_station_gas_price_strategy(  # pylint: disable=redefined-outer-name,unused-argument
-        web3: Web3, transaction_params: TxParams
+            web3: Web3, transaction_params: TxParams
     ) -> Wei:
         """
         Get gas price from Eth Gas Station api.
@@ -127,8 +127,8 @@ class SignedTransactionTranslator:
     def from_dict(signed_transaction_dict: JSONLike) -> SignedTransaction:
         """Get SignedTransaction from dict."""
         if (
-            not isinstance(signed_transaction_dict, dict)
-            and len(signed_transaction_dict) == 5
+                not isinstance(signed_transaction_dict, dict)
+                and len(signed_transaction_dict) == 5
         ):
             raise ValueError(  # pragma: nocover
                 f"Invalid for conversion. Found object: {signed_transaction_dict}."
@@ -218,82 +218,82 @@ class AttributeDictTranslator:
         return AttributeDict(processed_dict)
 
 
-class EthereumCrypto(Crypto[Account]):
-    """Class wrapping the Account Generation from Ethereum ledger."""
+class EthereumTudWallet:
+    """Class wrapping the Account Generation from the Ethereum tudwallet."""
 
     identifier = _ETHEREUM
 
-    def __init__(
-        self, private_key_path: Optional[str] = None, password: Optional[str] = None
-    ) -> None:
+    def __init__(self, hot_wallet_path: str, cold_wallet_path: str, enable_overwrite=False) -> None:
         """
-        Instantiate an ethereum crypto object.
+        Instantiate an ethereum tudwallet object.
 
-        :param private_key_path: the private key path of the agent
-        :param password: the password to encrypt/decrypt the private key.
+        :param hot_wallet_path: specifies the storage location of the hot wallet
+        :param cold_wallet_path: specifies the storage location of the cold wallet
+        :param enable_overwrite: enables perform_overwrite() of this object
         """
-        super().__init__(private_key_path=private_key_path, password=password)
-        bytes_representation = Web3.toBytes(hexstr=self.entity.key.hex())
-        self._public_key = str(keys.PrivateKey(bytes_representation).public_key)
-        self._address = str(self.entity.address)
+        self.__wallet = tud.Wallet(hot_wallet_path, cold_wallet_path)
+        self.__overwrite_protection = True
 
-    @property
-    def private_key(self) -> str:
+        key_pair_existing = False
+        try:
+            self.__wallet.generate_master_key(overwrite=False)  # Raises an exception if there is already a key pair
+        except Exception:
+            key_pair_existing = True
+
+        if enable_overwrite:
+            if not key_pair_existing:
+                raise Exception("No key pair existing, therefore no intention to overwrite permitted")
+            self.__overwrite_protection = False
+
+    def _reset_overwrite_protection(self):
+        self._overwrite_protection = True
+
+    def perform_overwrite(self):
+        if not self._overwrite_protection:
+            self._reset_overwrite_protection()
+            self.__wallet.generate_master_key(overwrite=True)
+        else:
+            raise Exception("Overwrite protection active. "
+                            "Create new EthereumTudWallet object with enable_overwrite = True")
+
+    def private_key(self, derivation_id: int) -> str:
         """
-        Return a private key.
+        Return an earlier derived private key by its derivation id.
 
+        :param derivation_id: specify which private key to get
         :return: a private key string
         """
-        return self.entity.key.hex()
+        self._reset_overwrite_protection()
+        session_secret_key = self.__wallet.secret_key_derive(derivation_id)
+        return session_secret_key.key
 
-    @property
-    def public_key(self) -> str:
+    def public_key(self, derivation_id: int) -> str:
         """
-        Return a public key in hex format.
+        Return an earlier derived public key by its derivation id.
 
+        :param derivation_id: specify which public key to get
         :return: a public key string in hex format
         """
-        return self._public_key
+        self._reset_overwrite_protection()
+        session_public_key = self.__wallet.public_key_derive(derivation_id)
+        return session_public_key.x + session_public_key.y  # TODO: change to hex format
 
-    @property
-    def address(self) -> str:
+    def address(self, derivation_id: int) -> str:
         """
-        Return the address for the key pair.
+        Return the address for the a specific key pair.
 
+        :param derivation_id: specify which address to get
         :return: a display_address str
         """
-        return self._address
+        self._reset_overwrite_protection()
 
-    @classmethod
-    def load_private_key_from_path(
-        cls, file_name: str, password: Optional[str] = None
-    ) -> Account:
-        """
-        Load a private key in hex format from a file.
+        if derivation_id not in self.__wallet.get_all_ids():
+            raise Exception("Derive public key with derivation_id = " + str(derivation_id) + " first!")
 
-        :param file_name: the path to the hex file.
-        :param password: the password to encrypt/decrypt the private key.
-        :return: the Entity.
-        """
-        private_key = cls.load(file_name, password)
-        try:
-            if not private_key.startswith("0x"):
-                hex_to_bytes_for_key(private_key)
-        except KeyIsIncorrect as e:
-            if not password:
-                raise KeyIsIncorrect(
-                    f"Error on key `{file_name}` load! Try to specify `password`: Error: {repr(e)} "
-                ) from e
-            raise KeyIsIncorrect(
-                f"Error on key `{file_name}` load! Wrong password?: Error: {repr(e)} "
-            ) from e
+        session_public_key = self.__wallet.public_key_derive(derivation_id)
+        return session_public_key.address
 
-        account = Account.from_key(  # pylint: disable=no-value-for-parameter
-            private_key=private_key
-        )
-        return account
-
-    def sign_message(self, message: bytes, is_deprecated_mode: bool = False) -> str:
+    def sign_message(self, message: bytes) -> str:
         """
         Sign a message in bytes string form.
 
@@ -301,15 +301,11 @@ class EthereumCrypto(Crypto[Account]):
         :param is_deprecated_mode: if the deprecated signing is used
         :return: signature of the message in string form
         """
-        if is_deprecated_mode and len(message) == 32:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                signature_dict = self.entity.signHash(message)
-            signed_msg = signature_dict["signature"].hex()
-        else:
-            signable_message = encode_defunct(primitive=message)
-            signature = self.entity.sign_message(signable_message=signable_message)
-            signed_msg = signature["signature"].hex()
+        self._reset_overwrite_protection()
+
+        signable_message = encode_defunct(primitive=message)
+        signature = self.entity.sign_message(signable_message=signable_message)
+        signed_msg = signature["signature"].hex()
         return signed_msg
 
     def sign_transaction(self, transaction: JSONLike) -> JSONLike:
@@ -319,101 +315,14 @@ class EthereumCrypto(Crypto[Account]):
         :param transaction: the transaction to be signed
         :return: signed transaction
         """
+        self._reset_overwrite_protection()
+
         signed_transaction = self.entity.sign_transaction(transaction_dict=transaction)
         #  Note: self.entity.signTransaction(transaction_dict=transaction) == signed_transaction # noqa: E800
         signed_transaction_dict = SignedTransactionTranslator.to_dict(
             signed_transaction
         )
         return cast(JSONLike, signed_transaction_dict)
-
-    @classmethod
-    def generate_private_key(cls) -> Account:
-        """Generate a key pair for ethereum network."""
-        account = Account.create()  # pylint: disable=no-value-for-parameter
-        return account
-
-    def encrypt(self, password: str) -> str:
-        """
-        Encrypt the private key and return in json.
-
-        :param private_key: the raw private key.
-        :param password: the password to decrypt.
-        :return: json string containing encrypted private key.
-        """
-        encrypted = Account.encrypt(self.private_key, password)
-        return json.dumps(encrypted)
-
-    @classmethod
-    def decrypt(cls, keyfile_json: str, password: str) -> str:
-        """
-        Decrypt the private key and return in raw form.
-
-        :param keyfile_json: json str containing encrypted private key.
-        :param password: the password to decrypt.
-        :return: the raw private key.
-        """
-        try:
-            private_key = Account.decrypt(keyfile_json, password)
-        except ValueError as e:
-            if e.args[0] == "MAC mismatch":
-                raise DecryptError() from e
-            raise
-        return private_key.hex()[2:]
-
-    # TODO: implement (&work on solution if key already generated)
-    def generate_master_key(self, override=False) -> bool:
-        """
-        generate a master secret key MSK and a master public key MPK (for later key derivation)
-        and an initial state, store the MSK the cold wallet directory and the MPK in the hot wallet directory.
-        (If a master key pair is already generated, and override is false, an exception is thrown)
-
-        :param override: if an already existing key pair should be replaced or not
-        :return: If the generation was successful
-        """
-        pass
-
-    # TODO: implement
-    def does_master_key_pair_exist(self) -> bool:
-        """
-        Checks if a master key pair already generated
-
-        :return: If the generation was successful
-        """
-        pass
-
-    # TODO: implement
-    def public_key_from_id(self, id) -> str:
-        """
-        Return/derive a private key.
-        If the ID is already existing in state, return the key from keystore
-        If the ID is new, derive a new key
-
-        :param id: the id of the derived public key
-        :return: a public key string
-        """
-        pass
-
-    # TODO: implement
-    def private_key_from_id(self, id) -> str:
-        """
-        Return/derive a public key.
-        If the ID is already existing in state, return the key from keystore
-        If the ID is new, derive a new key
-
-        :param id: the id of the derived public key
-        :return: a private key string
-        """
-        pass
-
-    # TODO: implement
-    def sign_transaction_with_session_key(self, transaction: JSONLike, id) -> JSONLike:
-        """
-        Sign a transaction in bytes string form by using a earlier generated session key
-
-        :param transaction: the transaction to be signed
-        :param id: the id of the derived private key
-        :return: signed transaction
-        """
 
 
 class EthereumHelper(Helper):
@@ -445,7 +354,7 @@ class EthereumHelper(Helper):
 
     @staticmethod
     def is_transaction_valid(
-        tx: dict, seller: Address, client: Address, tx_nonce: str, amount: int,
+            tx: dict, seller: Address, client: Address, tx_nonce: str, amount: int,
     ) -> bool:
         """
         Check whether a transaction is valid or not.
@@ -460,10 +369,10 @@ class EthereumHelper(Helper):
         is_valid = False
         if tx is not None:
             is_valid = (
-                tx.get("input") == tx_nonce
-                and tx.get("value") == amount
-                and tx.get("from") == client
-                and tx.get("to") == seller
+                    tx.get("input") == tx_nonce
+                    and tx.get("value") == amount
+                    and tx.get("from") == client
+                    and tx.get("to") == seller
             )
         return is_valid
 
@@ -497,7 +406,7 @@ class EthereumHelper(Helper):
 
     @classmethod
     def recover_message(
-        cls, message: bytes, signature: str, is_deprecated_mode: bool = False
+            cls, message: bytes, signature: str, is_deprecated_mode: bool = False
     ) -> Tuple[Address, ...]:
         """
         Recover the addresses from the hash.
@@ -523,7 +432,7 @@ class EthereumHelper(Helper):
 
     @classmethod
     def recover_public_keys_from_message(
-        cls, message: bytes, signature: str, is_deprecated_mode: bool = False
+            cls, message: bytes, signature: str, is_deprecated_mode: bool = False
     ) -> Tuple[str, ...]:
         """
         Get the public key used to produce the `signature` of the `message`
@@ -606,7 +515,7 @@ class EthereumApi(LedgerApi, EthereumHelper):
         return self._api.eth.getBalance(check_address)  # pylint: disable=no-member
 
     def get_state(
-        self, callable_name: str, *args: Any, **kwargs: Any
+            self, callable_name: str, *args: Any, **kwargs: Any
     ) -> Optional[JSONLike]:
         """Call a specified function on the ledger API."""
         response = self._try_get_state(callable_name, *args, **kwargs)
@@ -614,7 +523,7 @@ class EthereumApi(LedgerApi, EthereumHelper):
 
     @try_decorator("Unable to get state: {}", logger_method="warning")
     def _try_get_state(  # pylint: disable=unused-argument
-        self, callable_name: str, *args: Any, **kwargs: Any
+            self, callable_name: str, *args: Any, **kwargs: Any
     ) -> Optional[JSONLike]:
         """Try to call a function on the ledger API."""
 
@@ -633,16 +542,16 @@ class EthereumApi(LedgerApi, EthereumHelper):
         )
 
     def get_transfer_transaction(  # pylint: disable=arguments-differ
-        self,
-        sender_address: Address,
-        destination_address: Address,
-        amount: int,
-        tx_fee: int,
-        tx_nonce: str,
-        chain_id: Optional[int] = None,
-        gas_price: Optional[str] = None,
-        gas_price_strategy: Optional[str] = None,
-        **kwargs: Any,
+            self,
+            sender_address: Address,
+            destination_address: Address,
+            amount: int,
+            tx_fee: int,
+            tx_nonce: str,
+            chain_id: Optional[int] = None,
+            gas_price: Optional[str] = None,
+            gas_price_strategy: Optional[str] = None,
+            **kwargs: Any,
     ) -> Optional[JSONLike]:
         """
         Submit a transfer transaction to the ledger.
@@ -683,7 +592,7 @@ class EthereumApi(LedgerApi, EthereumHelper):
 
     @try_decorator("Unable to retrieve gas price: {}", logger_method="warning")
     def _try_get_gas_price(
-        self, gas_price_strategy: Optional[str] = None
+            self, gas_price_strategy: Optional[str] = None
     ) -> Optional[int]:
         """Try get the gas price based on the provided strategy."""
         gas_price_strategy_callable = get_gas_price_strategy(
@@ -809,7 +718,7 @@ class EthereumApi(LedgerApi, EthereumHelper):
         return AttributeDictTranslator.to_dict(tx)
 
     def get_contract_instance(
-        self, contract_interface: Dict[str, str], contract_address: Optional[str] = None
+            self, contract_interface: Dict[str, str], contract_address: Optional[str] = None
     ) -> Any:
         """
         Get the instance of a contract.
@@ -832,14 +741,14 @@ class EthereumApi(LedgerApi, EthereumHelper):
         return instance
 
     def get_deploy_transaction(  # pylint: disable=arguments-differ
-        self,
-        contract_interface: Dict[str, str],
-        deployer_address: Address,
-        value: int = 0,
-        gas: int = 0,
-        gas_price: Optional[str] = None,
-        gas_price_strategy: Optional[str] = None,
-        **kwargs: Any,
+            self,
+            contract_interface: Dict[str, str],
+            deployer_address: Address,
+            value: int = 0,
+            gas: int = 0,
+            gas_price: Optional[str] = None,
+            gas_price_strategy: Optional[str] = None,
+            **kwargs: Any,
     ) -> Optional[JSONLike]:
         """
         Get the transaction to deploy the smart contract.

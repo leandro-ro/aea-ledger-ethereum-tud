@@ -41,7 +41,7 @@ setup(
     ],
     tests_require=["pytest"],
     entry_points={
-        "aea.cryptos": ["ethereum_tud = aea_ledger_ethereum_tud:EthereumCrypto"],
+        "aea.cryptos": ["ethereum_tud = aea_ledger_ethereum_tud:EthereumTudWallet"],
     },
     classifiers=[
         "Environment :: Console",
