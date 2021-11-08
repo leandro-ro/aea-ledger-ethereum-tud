@@ -34,6 +34,8 @@ from eth_account.datastructures import HexBytes, SignedTransaction
 from eth_account.messages import _hash_eip191_message, encode_defunct
 from eth_keys import keys
 from eth_typing import HexStr
+from eth_utils import keccak
+
 from lru import LRU  # type: ignore  # pylint: disable=no-name-in-module
 from web3 import HTTPProvider, Web3
 from web3.datastructures import AttributeDict
@@ -41,8 +43,7 @@ from web3.gas_strategies.rpc import rpc_gas_price_strategy
 from web3.types import TxData, TxParams, TxReceipt, Wei
 
 from aea.common import Address, JSONLike
-from aea.crypto.base import Crypto, FaucetApi, Helper, LedgerApi
-from aea.crypto.helpers import DecryptError, KeyIsIncorrect, hex_to_bytes_for_key
+from aea.crypto.base import FaucetApi, Helper, LedgerApi
 from aea.exceptions import enforce
 from aea.helpers import http_requests as requests
 from aea.helpers.base import try_decorator
@@ -73,7 +74,8 @@ def get_gas_price_strategy(
 
     if gas_price_strategy not in supported_gas_price_modes:
         _default_logger.debug(
-            f"Gas price strategy `{gas_price_strategy}` not in list of supported modes: {supported_gas_price_modes}. Falling back to `rpc_gas_price_strategy`."
+            f"Gas price strategy `{gas_price_strategy}` not in list of supported modes: {supported_gas_price_modes}. "
+            f"Falling back to `rpc_gas_price_strategy`. "
         )
         return rpc_gas_price_strategy
 
@@ -242,7 +244,7 @@ class EthereumTudWallet:
 
         if enable_overwrite:
             if not key_pair_existing:
-                raise Exception("No key pair existing, therefore no intention to overwrite permitted")
+                raise Exception("No key pair existing, therefore no reason for the intention to overwrite")
             self.__overwrite_protection = False
 
     def _reset_overwrite_protection(self):
@@ -264,6 +266,7 @@ class EthereumTudWallet:
         :return: a private key string
         """
         self._reset_overwrite_protection()
+
         session_secret_key = self.__wallet.secret_key_derive(derivation_id)
         return session_secret_key.key
 
@@ -275,8 +278,18 @@ class EthereumTudWallet:
         :return: a public key string in hex format
         """
         self._reset_overwrite_protection()
+
         session_public_key = self.__wallet.public_key_derive(derivation_id)
-        return session_public_key.x + session_public_key.y  # TODO: change to hex format
+        x = session_public_key.x[2:]
+        y = session_public_key.y[2:]
+
+        if not len(x) % 2 == 0:
+            x = "0" + x
+        if not len(y) % 2 == 0:
+            y = "0" + y
+
+        pk = keccak(hexstr=x+y)
+        return "0x" + pk.hex()
 
     def address(self, derivation_id: int) -> str:
         """
@@ -293,32 +306,32 @@ class EthereumTudWallet:
         session_public_key = self.__wallet.public_key_derive(derivation_id)
         return session_public_key.address
 
-    def sign_message(self, message: bytes) -> str:
+    def sign_message(self, message, derivation_id: int) -> str:
         """
-        Sign a message in bytes string form.
+        Sign a message in bytes string or string form.
 
-        :param message: the message to be signed
-        :param is_deprecated_mode: if the deprecated signing is used
+        :param message: the message to be signed, e.g. b"hello" or "hello"
+        :param derivation_id: specify which account to use for signing
         :return: signature of the message in string form
         """
         self._reset_overwrite_protection()
 
-        signable_message = encode_defunct(primitive=message)
-        signature = self.entity.sign_message(signable_message=signable_message)
-        signed_msg = signature["signature"].hex()
-        return signed_msg
+        signed_message = self.__wallet.sign_message(message, derivation_id)
+        sig = str(signed_message.signature.hex())
+        return sig
 
-    def sign_transaction(self, transaction: JSONLike) -> JSONLike:
+    def sign_transaction(self, transaction: JSONLike, derivation_id: int) -> JSONLike:
         """
         Sign a transaction in bytes string form.
 
         :param transaction: the transaction to be signed
+        :param derivation_id: specify which account to use for signing
         :return: signed transaction
         """
         self._reset_overwrite_protection()
 
-        signed_transaction = self.entity.sign_transaction(transaction_dict=transaction)
-        #  Note: self.entity.signTransaction(transaction_dict=transaction) == signed_transaction # noqa: E800
+        signed_transaction = self.__wallet.sign_transaction(transaction, derivation_id)
+
         signed_transaction_dict = SignedTransactionTranslator.to_dict(
             signed_transaction
         )
@@ -333,7 +346,7 @@ class EthereumHelper(Helper):
         """
         Check whether a transaction is settled or not.
 
-        :param tx_digest: the digest associated to the transaction.
+        :param tx_receipt: the digest associated to the transaction.
         :return: True if the transaction has been settled, False o/w.
         """
         is_successful = False
@@ -628,7 +641,8 @@ class EthereumApi(LedgerApi, EthereumHelper):
             if specified_gas < gas_estimate:
                 # eventually; there should be some specifiable strategy
                 _default_logger.warning(  # pragma: nocover
-                    f"Needed to increase gas to cover the gas consumption of the transaction. Estimated gas consumption is: {gas_estimate}. Specified gas was: {specified_gas}."
+                    f"Needed to increase gas to cover the gas consumption of the transaction. Estimated gas "
+                    f"consumption is: {gas_estimate}. Specified gas was: {specified_gas}. "
                 )
             transaction["gas"] = gas_estimate
         return transaction
