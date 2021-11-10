@@ -1,3 +1,4 @@
 [submodule "aea_ledger_ethereum_tud/tudwallet"]
 	path = aea_ledger_ethereum_tud/tudwallet
 	url = git@github.com:leandro-ro/tudwallet.git
+	branch = optimized_imports_for_aea
