@@ -19,18 +19,18 @@
 # ------------------------------------------------------------------------------
 
 """Setup script for "aea_ledger_ethereum" package."""
-
+import aea_ledger_ethereum_tud
 from setuptools import find_packages, setup
 
 
 setup(
     name="aea-ledger-ethereum-tud",
     version="1.0.0",
-    author="Fetch.AI Limited / Leandro Rometsch (Wallet Code)",
+    author="Leandro Rometsch (Wallet Code)",
     license="Apache-2.0",
     description="Python package wrapping the public and private key cryptography and ledger api of Ethereum. Added a "
                 "custom Ethereum Hot/Cold Wallet",
-    packages=find_packages(include=["aea_ledger_ethereum*"]),
+    packages=find_packages(include=["aea_ledger_ethereum_tud*"]),
     install_requires=[
         "aea>=1.0.0, <2.0.0",
         "web3==5.12.0",

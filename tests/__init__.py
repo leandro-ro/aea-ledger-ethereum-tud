@@ -17,4 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Tests for the aea_ledger_ethereum package."""
+"""Tests for the aea_ledger_ethereum_tud package."""

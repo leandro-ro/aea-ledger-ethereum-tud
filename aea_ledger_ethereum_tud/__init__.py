@@ -19,5 +19,6 @@
 
 """Python package wrapping the public and private key cryptography and ledger api of Ethereum."""
 
+from .tudwallet import wallet
 from .ethereum import *  # noqa isort:skip
 from .ethereum import _ABI, _BYTECODE, _ETHEREUM  # noqa isort:skip

@@ -18,7 +18,7 @@
 # ------------------------------------------------------------------------------
 """Ethereum module wrapping the public and private key cryptography and ledger api."""
 import logging
-import tudwallet.wallet as tud
+from .tudwallet import wallet as tud
 from typing import Dict, Union, cast
 
 import ipfshttpclient  # noqa: F401 # pylint: disable=unused-import
@@ -37,6 +37,7 @@ DEFAULT_CURRENCY_DENOM = "wei"
 ETH_GASSTATION_URL = "https://ethgasstation.info/api/ethgasAPI.json"
 _ABI = "abi"
 _BYTECODE = "bytecode"
+
 
 class SignedTransactionTranslator:
     """Translator for SignedTransaction."""
@@ -141,7 +142,7 @@ class EthereumTudWallet:
         if not len(y) % 2 == 0:
             y = "0" + y
 
-        pk = keccak(hexstr=x+y)
+        pk = keccak(hexstr=x + y)
         return "0x" + pk.hex()
 
     def address(self, derivation_id: int) -> str:
