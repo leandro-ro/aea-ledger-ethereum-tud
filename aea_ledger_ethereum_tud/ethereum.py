@@ -102,10 +102,10 @@ class EthereumTudWallet:
             self.__overwrite_protection = False
 
     def _reset_overwrite_protection(self):
-        self._overwrite_protection = True
+        self.__overwrite_protection = True
 
     def perform_overwrite(self):
-        if not self._overwrite_protection:
+        if not self.__overwrite_protection:
             self._reset_overwrite_protection()
             self.__wallet.generate_master_key(overwrite=True)
         else:
