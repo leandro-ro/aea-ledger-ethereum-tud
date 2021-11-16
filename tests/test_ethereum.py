@@ -17,90 +17,141 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the tests of the ethereum module."""
+from eth_account.messages import encode_defunct
 
-import pytest
-from aea_ledger_ethereum_tud import (
-    EthereumTudWallet
-)
+from aea_ledger_ethereum_tud import EthereumTudWallet
+from eth_account import Account
 
-from tests.conftest import DEFAULT_GANACHE_CHAIN_ID
+hw_keystore = "tests/data/hot_wallet_keystore/"
+cw_keystore = "tests/data/cold_wallet_keystore/"
 
 
-def test_creation(ethereum_private_key_file):
-    """Test the creation of the crypto_objects."""
-    assert EthereumCrypto(), "Managed to initialise the eth_account"
-    assert EthereumCrypto(
-        ethereum_private_key_file
-    ), "Managed to load the eth private key"
+def test_overwrite():
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)  # Permission to overwrite is not given ...
+    try:
+        wallet.perform_overwrite()  # ... and perform_overwrite() is prohibited ...
+        assert False
+    except Exception:  # ... therefore we expect an exception
+        assert True
+
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore, True)  # Permission to overwrite is now given ...
+    try:
+        wallet.perform_overwrite()  # ... and perform_overwrite() is allowed ...
+    except Exception:  # ... therefore we do NOT expect an exception
+        assert False
 
 
 def test_initialization():
-    """Test the initialisation of the variables."""
-    account = EthereumCrypto()
-    assert account.entity is not None, "The property must return the account."
-    assert (
-        account.address is not None and type(account.address) == str
-    ), "After creation the display address must not be None"
-    assert (
-        account.public_key is not None and type(account.public_key) == str
-    ), "After creation the public key must no be None"
-    assert account.entity is not None, "After creation the entity must no be None"
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
+
+    try:
+        wallet.address(1)  # Should raise an exception because no public key were derived yet
+        assert False
+    except Exception:
+        assert True
 
 
-def test_sign_message(ethereum_private_key_file):
-    """Test the signing and the recovery function for the eth_crypto."""
-    account = EthereumCrypto(ethereum_private_key_file)
-    sign_bytes = account.sign_message(message=b"hello")
+def test_derivation_one():
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
+
+    wallet.public_key(1)
+    addr = wallet.address(1)
+    sk = wallet.private_key(1)
+    acc = Account.from_key(sk)
+
+    assert acc.address.lower() == addr.lower()  # If address matches, public  key also must match
+
+
+def test_derivation_two():
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
+
+    wallet.public_key(100)
+    addr = wallet.address(100)
+    sk = wallet.private_key(100)
+    acc = Account.from_key(sk)
+
+    assert acc.address.lower() == addr.lower()  # If address matches, public  key also must match
+
+
+def test_derivation_exception_one():
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
+
+    try:
+        wallet.private_key(110)  # Public key must be derived first
+        assert False
+    except Exception:
+        assert True
+
+
+def test_derivation_exception_two():
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
+
+    try:
+        wallet.public_key(50)  # Id must be higher than all previously used ids
+        assert False
+    except Exception:
+        assert True
+
+
+def test_derivation_stress():
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
+
+    for i in range(101, 250):
+        wallet.public_key(i)
+        sk = wallet.private_key(i)
+        addr = wallet.address(i)
+        acc = Account.from_key(sk)
+        assert acc.address == addr
+
+
+def test_sign_message_bytes():
+    """Test the signing function for byte messages."""
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
+
+    sign_bytes = wallet.sign_message(b"hello", 1)
     assert len(sign_bytes) > 0, "The len(signature) must not be 0"
-    recovered_addresses = EthereumApi.recover_message(
-        message=b"hello", signature=sign_bytes
+    recovered_address = Account.recover_message(
+        signable_message=encode_defunct(primitive=b"hello"), signature=sign_bytes
     )
-    assert len(recovered_addresses) == 1, "Wrong number of addresses recovered."
     assert (
-        recovered_addresses[0] == account.address
+            recovered_address == wallet.address(1)
     ), "Failed to recover the correct address."
 
 
-def test_sign_message_public_key(ethereum_private_key_file):
-    """Test the signing and the recovery function for the eth_crypto."""
-    account = EthereumCrypto(ethereum_private_key_file)
-    sign_bytes = account.sign_message(message=b"hello")
+def test_sign_message_string():
+    """Test the signing for string messages."""
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
+
+    sign_bytes = wallet.sign_message("hello", 100)
     assert len(sign_bytes) > 0, "The len(signature) must not be 0"
-    recovered_public_keys = EthereumApi.recover_public_keys_from_message(
-        message=b"hello", signature=sign_bytes
+    recovered_address = Account.recover_message(
+        signable_message=encode_defunct(text="hello"), signature=sign_bytes
     )
-    assert len(recovered_public_keys) == 1, "Wrong number of public keys recovered."
     assert (
-        EthereumApi.get_address_from_public_key(recovered_public_keys[0])
-        == account.address
+            recovered_address == wallet.address(100)
     ), "Failed to recover the correct address."
 
 
-def test_sign_transaction(
-    ethereum_testnet_config, ganache, ethereum_private_key_file
-):
+def test_sign_transaction():
     """Test the construction, signing and submitting of a transfer transaction."""
-    account = EthereumCrypto(private_key_path=ethereum_private_key_file)
-    ec2 = EthereumCrypto()
-    ethereum_api = EthereumApi(**ethereum_testnet_config)
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
 
-    amount = 40000
-    tx_nonce = ethereum_api.generate_tx_nonce(ec2.address, account.address)
-    transfer_transaction = ethereum_api.get_transfer_transaction(
-        sender_address=account.address,
-        destination_address=ec2.address,
-        amount=amount,
-        tx_fee=30000,
-        tx_nonce=tx_nonce,
-        chain_id=DEFAULT_GANACHE_CHAIN_ID,
-    )
-    assert (
-        isinstance(transfer_transaction, dict) and len(transfer_transaction) == 7
-    ), "Incorrect transfer_transaction constructed."
+    transfer_transaction = {
+        # Note that the address must be in checksum format or native bytes:
+        'to': '0x82fc853256B05029b3759161B32E3460Fe4eaC77',
+        'value': 10000000000000000,
+        'gas': 2000000,
+        'gasPrice': 2500000008,
+        'nonce': 1,
+        'chainId': 3,  # Ropsten Testnet ID = 3
+    }
 
-    signed_transaction = account.sign_transaction(transfer_transaction)
+    signed_transaction = wallet.sign_transaction(transfer_transaction, 150)
     assert (
-        isinstance(signed_transaction, dict) and len(signed_transaction) == 5
+            isinstance(signed_transaction, dict) and len(signed_transaction) == 5
     ), "Incorrect signed_transaction constructed."
 
-
+    recovered_address = Account.recover_transaction(signed_transaction.get("raw_transaction"))
+    assert (
+        recovered_address == wallet.address(150)
+    )

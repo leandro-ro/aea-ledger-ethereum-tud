@@ -21,4 +21,3 @@
 
 from .tudwallet import wallet
 from .ethereum import *  # noqa isort:skip
-from .ethereum import _ABI, _BYTECODE, _ETHEREUM  # noqa isort:skip
