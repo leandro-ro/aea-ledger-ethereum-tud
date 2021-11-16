@@ -17,7 +17,6 @@
 #
 # ------------------------------------------------------------------------------
 """Ethereum module wrapping the public and private key cryptography and ledger api."""
-import logging
 from .tudwallet import wallet as tud
 from typing import Dict, Union, cast
 
@@ -26,17 +25,6 @@ from eth_account.datastructures import HexBytes, SignedTransaction
 from eth_utils import keccak
 
 from aea.common import JSONLike
-
-_default_logger = logging.getLogger(__name__)
-
-_ETHEREUM = "ethereum"
-TESTNET_NAME = "ganache"
-DEFAULT_ADDRESS = "http://127.0.0.1:8545"
-DEFAULT_CHAIN_ID = 1337
-DEFAULT_CURRENCY_DENOM = "wei"
-ETH_GASSTATION_URL = "https://ethgasstation.info/api/ethgasAPI.json"
-_ABI = "abi"
-_BYTECODE = "bytecode"
 
 
 class SignedTransactionTranslator:
@@ -75,9 +63,7 @@ class SignedTransactionTranslator:
 
 
 class EthereumTudWallet:
-    """Class wrapping the Account Generation from the Ethereum tudwallet."""
-
-    identifier = _ETHEREUM
+    """Class wrapping the Account Generation for the ethereum tudwallet."""
 
     def __init__(self, hot_wallet_path: str, cold_wallet_path: str, enable_overwrite=False) -> None:
         """
@@ -102,9 +88,17 @@ class EthereumTudWallet:
             self.__overwrite_protection = False
 
     def _reset_overwrite_protection(self):
+        """
+        Re-engages the overwrite protection to prevent accidental loss of keys
+
+        """
         self.__overwrite_protection = True
 
     def perform_overwrite(self):
+        """
+        Overwrites existing keys iff overwrite protection is deactivated (set to False). Use with caution!
+
+        """
         if not self.__overwrite_protection:
             self._reset_overwrite_protection()
             self.__wallet.generate_master_key(overwrite=True)
