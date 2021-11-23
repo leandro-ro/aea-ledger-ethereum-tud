@@ -22,43 +22,21 @@
 import aea_ledger_ethereum_tud
 from setuptools import find_packages, setup
 
-
 setup(
     name="aea-ledger-ethereum-tud",
-    version="1.0.0",
+    version="0.0.1",
     author="Leandro Rometsch (Wallet Code)",
     license="Apache-2.0",
-    description="Python package wrapping the public and private key cryptography and ledger api of Ethereum. Added a "
-                "custom Ethereum Hot/Cold Wallet",
+    description="Python package wrapping a custom hot/cold wallet (tudwallet).",
     packages=find_packages(include=["aea_ledger_ethereum_tud*"]),
     install_requires=[
         "aea>=1.0.0, <2.0.0",
-        "web3==5.12.0",
-        "ipfshttpclient==0.6.1",
         "eth-account==0.5.2",
         "eth-utils==1.10.0",
         "jpype1==1.3.0",
     ],
     tests_require=["pytest"],
     entry_points={
-        "aea.cryptos": ["ethereum_tud = aea_ledger_ethereum_tud:EthereumTudWallet"],
+        "aea.cryptos": ["tudwallet = aea_ledger_ethereum_tud:EthereumTudWallet"],
     },
-    classifiers=[
-        "Environment :: Console",
-        "Environment :: Web Environment",
-        "Development Status :: 5 - Production/Stable",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: Apache Software License",
-        "Natural Language :: English",
-        "Operating System :: MacOS",
-        "Operating System :: Microsoft",
-        "Operating System :: Unix",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Topic :: Communications",
-        "Topic :: Internet",
-        "Topic :: Software Development",
-    ],
 )

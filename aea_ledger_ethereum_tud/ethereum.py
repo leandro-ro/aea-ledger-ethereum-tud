@@ -20,7 +20,6 @@
 from .tudwallet import wallet as tud
 from typing import Dict, Union, cast
 
-import ipfshttpclient  # noqa: F401 # pylint: disable=unused-import
 from eth_account.datastructures import HexBytes, SignedTransaction
 from eth_utils import keccak
 
