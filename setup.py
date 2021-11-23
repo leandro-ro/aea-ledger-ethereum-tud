@@ -39,4 +39,6 @@ setup(
     entry_points={
         "aea.cryptos": ["tudwallet = aea_ledger_ethereum_tud:EthereumTudWallet"],
     },
+    package_data={'': ['aea_ledger_ethereum_tud/tudwallet/libs/*']},
+    include_package_data=True,
 )

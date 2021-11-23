@@ -2,3 +2,4 @@ include README.md LICENSE HISTORY.md
 
 recursive-include aea_ledger_ethereum_tud
 recursive-include tests *
+include aea_ledger_ethereum_tud/tudwallet/libs/*.jar
