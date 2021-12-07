@@ -1,5 +1,5 @@
 # aea-ledger-ethereum-tud
-This project wraps a custom ethereum wallet to make it compatible with the [AEA framework plug-in architecture](https://docs.fetch.ai/aea/ledger-integration/#ledger-plug-in-architecture). The wallet utilizes cryptographic operations based on ["A Formal Treatment of Deterministic Wallets" by Das et al. CCS'19](https://dl.acm.org/doi/abs/10.1145/3319535.3354236). For more informations about the wallet, head to the wallet repository (liked as submodule in /aea_ledger_ethereum_tud).
+This project wraps a custom ethereum wallet to make it compatible with the [AEA framework plug-in architecture](https://docs.fetch.ai/aea/ledger-integration/#ledger-plug-in-architecture). The wallet utilizes cryptographic operations based on ["A Formal Treatment of Deterministic Wallets" by Das et al. CCS'19](https://dl.acm.org/doi/abs/10.1145/3319535.3354236). For more information about the wallet, head to the wallet repository (linked in /aea_ledger_ethereum_tud).
 
 ## Setup
 ### Requirements
