@@ -183,3 +183,13 @@ class EthereumTudWallet:
             signed_transaction
         )
         return cast(JSONLike, signed_transaction_dict)
+
+    def derivation_ids(self) -> list:
+        """
+        Returns all ids of already derived public keys.
+
+        :return: all ids used to derive public keys earlier
+        """
+        self._reset_overwrite_protection()
+
+        return self.__wallet.get_all_ids()

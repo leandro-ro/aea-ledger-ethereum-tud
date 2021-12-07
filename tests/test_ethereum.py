@@ -93,6 +93,12 @@ def test_derivation_exception_two():
         assert True
 
 
+def test_derivation_ids():
+    wallet = EthereumTudWallet(hw_keystore, cw_keystore)
+
+    assert wallet.derivation_ids() == [1, 100]
+
+
 def test_derivation_stress():
     wallet = EthereumTudWallet(hw_keystore, cw_keystore)
 
@@ -105,7 +111,6 @@ def test_derivation_stress():
 
 
 def test_sign_message_bytes():
-    """Test the signing function for byte messages."""
     wallet = EthereumTudWallet(hw_keystore, cw_keystore)
 
     sign_bytes = wallet.sign_message(b"hello", 1)
@@ -119,7 +124,6 @@ def test_sign_message_bytes():
 
 
 def test_sign_message_string():
-    """Test the signing for string messages."""
     wallet = EthereumTudWallet(hw_keystore, cw_keystore)
 
     sign_bytes = wallet.sign_message("hello", 100)
@@ -133,7 +137,6 @@ def test_sign_message_string():
 
 
 def test_sign_transaction():
-    """Test the construction, signing and submitting of a transfer transaction."""
     wallet = EthereumTudWallet(hw_keystore, cw_keystore)
 
     transfer_transaction = {
@@ -153,5 +156,5 @@ def test_sign_transaction():
 
     recovered_address = Account.recover_transaction(signed_transaction.get("raw_transaction"))
     assert (
-        recovered_address == wallet.address(150)
+            recovered_address == wallet.address(150)
     )
