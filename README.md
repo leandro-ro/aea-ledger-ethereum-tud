@@ -1,9 +1,7 @@
 # aea-ledger-ethereum-tud
-This project holds a deterministic ethereum wallet and wraps it to be used as a crypto plugin the aea framework. The wallet utilizes cryptographic operations based on "A Formal Treatment of Deterministic Wallets" by Das et al. CCS'19 - https://dl.acm.org/doi/abs/10.1145/3319535.3354236
+This project wraps a custom ethereum wallet to make it compatible with the [AEA framework plug-in architecture](https://docs.fetch.ai/aea/ledger-integration/#ledger-plug-in-architecture). The wallet utilizes cryptographic operations based on ["A Formal Treatment of Deterministic Wallets" by Das et al. CCS'19](https://dl.acm.org/doi/abs/10.1145/3319535.3354236). For more informations about the wallet, head to the wallet repository (liked as submodule in /aea_ledger_ethereum_tud).
 
-The underlying cryptography provides the wallet with a randomized ECDSA scheme to generate ECDSA key pairs in a hot/cold wallet environment. The main key pair allows deriving other key pairs intended to be used as (one-time) ethereum accounts. The final signing is done via the eth_account library.
-
-## Install
+## Setup
 ### Requirements
 General:
 - java (e.g. on Ubuntu via   `sudo apt install default-jre`)
@@ -15,7 +13,7 @@ Python (virtual) environment:
 - eth_utils - `pip install eth_utils`
 - jpype - `pip install jpype1`
 
-### Install from source
+### Installation
 1. Clone this repository including the tudwallet submodule 
 ``` bash
 git clone --recurse-submodules git@github.com:leandro-ro/aea-ledger-ethereum-tud.git
