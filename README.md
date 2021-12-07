@@ -95,9 +95,9 @@ tudwallet.private_key(derivation_id=1)  # Secret key for public key with id=1
 To sign a message use `.sign_message()`. The ID specifies which (already derived!) key pair is being used for signing. An exception will be raised if an ID is given that was not used to derive a public and secret key earlier.
 ```python
 message = "This is a test!"
-signed_msg = test_wallet.sign_message(message=message, id=1)
+message_signature = tudwallet.sign_message(message=message, derivation_id=1)
 ```
-The signed message contains the `messageHash`, the full `signature`, and the raw signature as `r`, `s`, `v`.
+The signature is given as hex string.
 
 ### Transaction signing
 To sign a transaction use `.sign_transaction()`. The ID specifies which (already derived!) key pair is being used for signing. If an ID is given that was not used to derive a public and secret key earlier, an exception will be raised.
@@ -112,6 +112,6 @@ transaction = {
     'chainId': 3,  # Ropsten Testnet ID = 3
 }
 
-signed_tx = test_wallet.sign_transaction(transaction_dict=transaction, id=1)
+signed_transaction = tudwallet.sign_transaction(transaction_dict=transaction, id=1)
 ```
-The signed transaction contains the `rawTransaction`, which can be used to publish the transaction to the ethereum network, the transaction `hash`, and the raw signature as `r`, `s`, `v`.
+The signed transaction is given as dict which contains the `rawTransaction`, which can be used to publish the transaction to the ethereum network, the transaction `hash`, and the raw ECDSA signature as `r`, `s`, `v`.
